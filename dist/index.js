@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 import { startServer } from "./server.js";
 import { handleNotify } from "./notify.js";
-import { runSetup } from "./setup.js";
+import { runSetup, runUninstall } from "./setup.js";
 const command = process.argv[2];
 switch (command) {
     case "setup":
         runSetup().catch((err) => {
             console.error("Setup failed:", err.message);
+            process.exit(1);
+        });
+        break;
+    case "uninstall":
+        runUninstall().catch((err) => {
+            console.error("Uninstall failed:", err.message);
             process.exit(1);
         });
         break;
