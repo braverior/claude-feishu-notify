@@ -136,11 +136,23 @@ claude mcp add feishu-bridge \
 ```bash
 npx claude-feishu-notify           # 启动 MCP Server（Claude Code 自动调用）
 npx claude-feishu-notify setup     # 交互式安装向导
+npx claude-feishu-notify uninstall # 卸载（移除 MCP Server + Hooks + 环境变量）
 npx claude-feishu-notify notify    # 处理 Hook 通知（Claude Code Hook 调用）
   --type stop                   #   任务完成通知
   --type permission             #   工具授权通知
   --type idle                   #   等待输入通知
   --type general                #   通用通知
+```
+
+## 卸载
+
+```bash
+# 1. 移除 MCP Server
+claude mcp remove feishu-bridge
+
+# 2. 清理 Hooks（删除 ~/.claude/settings.json 中 claude-feishu-notify 相关的 hooks）
+npx claude-feishu-notify uninstall
+# 或手动编辑 ~/.claude/settings.json，删除 Notification 和 Stop 中的 claude-feishu-notify 条目
 ```
 
 ## 工作原理

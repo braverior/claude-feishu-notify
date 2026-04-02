@@ -175,3 +175,79 @@ export async function runSetup(): Promise<void> {
   console.log('  对 Claude 说 "检查飞书消息" 可拉取用户通过机器人发来的指令');
   console.log('  对 Claude 说 "给我发条飞书消息" 可测试发送功能');
 }
+
+export async function runUninstall(): Promise<void> {
+  console.log("╔══════════════════════════════════════╗");
+  console.log("║  Feishu Bridge MCP - Uninstall       ║");
+  console.log("╚══════════════════════════════════════╝");
+  console.log();
+
+  // 1. Remove MCP server
+  console.log("📦 移除 MCP Server...");
+  const claudeBin = which("claude");
+  if (claudeBin) {
+    try {
+      run(`${claudeBin} mcp remove feishu-bridge`);
+      console.log("   ✅ MCP Server 已移除");
+    } catch {
+      console.log("   ⚠️  MCP Server 不存在或已移除");
+    }
+  } else {
+    console.log("   ⚠️  未找到 claude CLI，跳过 MCP 移除");
+  }
+
+  // 2. Clean hooks from settings.json
+  console.log();
+  console.log("🔗 清理 Hooks...");
+
+  const settingsPath = join(homedir(), ".claude", "settings.json");
+  if (!existsSync(settingsPath)) {
+    console.log("   ⚠️  未找到 settings.json，跳过");
+  } else {
+    let settings: Record<string, unknown> = {};
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    } catch {
+      console.log("   ⚠️  settings.json 解析失败，跳过");
+      return;
+    }
+
+    const hooks = settings.hooks as Record<string, unknown[]> | undefined;
+    if (hooks) {
+      for (const event of Object.keys(hooks)) {
+        const entries = hooks[event] as Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>;
+        hooks[event] = entries.filter(
+          (h) => !h.hooks?.some((hh) => hh.command?.includes("claude-feishu-notify")),
+        );
+        if ((hooks[event] as unknown[]).length === 0) {
+          delete hooks[event];
+        }
+      }
+      if (Object.keys(hooks).length === 0) {
+        settings.hooks = {};
+      }
+    }
+
+    // Clean env vars
+    const env = settings.env as Record<string, string> | undefined;
+    if (env) {
+      delete env.FEISHU_NOTIFY_USER_ID;
+    }
+
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    console.log(`   ✅ Hooks 已从 ${settingsPath} 中移除`);
+  }
+
+  // 3. Done
+  console.log();
+  console.log("╔══════════════════════════════════════╗");
+  console.log("║          ✅ 卸载完成！               ║");
+  console.log("╚══════════════════════════════════════╝");
+  console.log();
+  console.log("已清理:");
+  console.log("  📦 MCP Server: feishu-bridge");
+  console.log("  🔗 所有 claude-feishu-notify 相关 Hooks");
+  console.log("  🔑 环境变量 FEISHU_NOTIFY_USER_ID");
+  console.log();
+  console.log("重启 Claude Code 即可生效。");
+}
