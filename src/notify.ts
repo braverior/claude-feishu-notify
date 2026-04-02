@@ -62,7 +62,7 @@ async function aiSummarize(text: string): Promise<string> {
 
   const truncated = text.length > 2000 ? text.substring(0, 2000) + "..." : text;
   const body = JSON.stringify({
-    model: process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL || "claude-haiku-4-5-20251001",
+    model: process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL || process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
     max_tokens: 150,
     messages: [{ role: "user", content: `请用一句简洁的中文（30-80字）总结以下 Claude Code 的工作内容。直接输出总结，不要前缀。\n\n${truncated}` }],
   });

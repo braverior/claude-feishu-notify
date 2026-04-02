@@ -104,7 +104,42 @@ export async function runSetup(): Promise<void> {
     }
   }
 
-  // 4. Configure hooks
+  // 4. Select notification types
+  console.log();
+  console.log("📬 选择要接收的飞书通知类型：");
+  console.log();
+
+  const allHookDefs = [
+    { key: "1", event: "Stop",         matcher: "",                 type: "stop",       icon: "✅", label: "任务完成通知",   desc: "Claude 完成任务后推送绿色卡片 + AI 摘要" },
+    { key: "2", event: "Notification", matcher: "permission_prompt", type: "permission", icon: "🔐", label: "工具授权提醒",   desc: "Claude 需要权限时推送橙色卡片" },
+    { key: "3", event: "Notification", matcher: "idle_prompt",       type: "idle",       icon: "⏳", label: "等待输入提醒",   desc: "Claude 等待你回复时推送蓝色卡片" },
+  ];
+
+  for (const h of allHookDefs) {
+    console.log(`   [${h.key}] ${h.icon} ${h.label}`);
+    console.log(`       ${h.desc}`);
+  }
+
+  console.log();
+  const selection = await ask("   输入编号选择（如 1,3），直接回车全选: ");
+
+  let selectedKeys: Set<string>;
+  if (!selection) {
+    selectedKeys = new Set(allHookDefs.map((h) => h.key));
+  } else {
+    selectedKeys = new Set(selection.split(/[,，\s]+/).map((s) => s.trim()).filter(Boolean));
+  }
+
+  const selectedHooks = allHookDefs.filter((h) => selectedKeys.has(h.key));
+
+  if (selectedHooks.length === 0) {
+    console.log("   ⚠️  未选择任何通知，跳过 Hooks 配置");
+  } else {
+    console.log();
+    console.log(`   已选择: ${selectedHooks.map((h) => h.icon + " " + h.label).join("、")}`);
+  }
+
+  // 5. Configure hooks
   console.log();
   console.log("🔗 配置 Hooks...");
 
@@ -118,30 +153,27 @@ export async function runSetup(): Promise<void> {
     }
   }
 
-  if (!settings.hooks) settings.hooks = {};
-  const hooks = settings.hooks as Record<string, unknown[]>;
+  if (selectedHooks.length > 0) {
+    if (!settings.hooks) settings.hooks = {};
+    const hooks = settings.hooks as Record<string, unknown[]>;
 
-  const hookDefs = [
-    { event: "Notification", matcher: "permission_prompt", type: "permission" },
-    { event: "Notification", matcher: "idle_prompt", type: "idle" },
-    { event: "Stop", matcher: "", type: "stop" },
-  ];
+    for (const def of selectedHooks) {
+      if (!hooks[def.event]) hooks[def.event] = [];
+      const entries = hooks[def.event] as Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>;
 
-  for (const def of hookDefs) {
-    if (!hooks[def.event]) hooks[def.event] = [];
-    const entries = hooks[def.event] as Array<{ matcher: string; hooks: Array<{ type: string; command: string }> }>;
+      const cmd = `npx -y claude-feishu-notify notify --type ${def.type}`;
+      const hookEntry = { matcher: def.matcher, hooks: [{ type: "command", command: cmd }] };
 
-    const cmd = `npx -y claude-feishu-notify notify --type ${def.type}`;
-    const hookEntry = { matcher: def.matcher, hooks: [{ type: "command", command: cmd }] };
+      const existing = entries.findIndex((h) =>
+        h.matcher === def.matcher &&
+        h.hooks?.some((hh) => hh.command?.includes("claude-feishu-notify notify")),
+      );
 
-    const existing = entries.findIndex((h) =>
-      h.hooks?.some((hh) => hh.command?.includes("claude-feishu-notify notify")),
-    );
-
-    if (existing >= 0) {
-      entries[existing] = hookEntry;
-    } else {
-      entries.push(hookEntry);
+      if (existing >= 0) {
+        entries[existing] = hookEntry;
+      } else {
+        entries.push(hookEntry);
+      }
     }
   }
 
@@ -151,9 +183,9 @@ export async function runSetup(): Promise<void> {
   if (userId) env.FEISHU_NOTIFY_USER_ID = userId;
 
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-  console.log(`   ✅ Hooks 已写入 ${settingsPath}`);
+  console.log(`   ✅ 配置已写入 ${settingsPath}`);
 
-  // 5. Done
+  // 6. Done
   console.log();
   console.log("╔══════════════════════════════════════╗");
   console.log("║          ✅ 安装完成！               ║");
@@ -162,10 +194,14 @@ export async function runSetup(): Promise<void> {
   console.log("已配置:");
   console.log("  📦 MCP Server: feishu-bridge");
   console.log("     工具: feishu_send / feishu_inbox / feishu_reply / feishu_status");
-  console.log("  🔗 Hooks:");
-  console.log("     ✅ 任务完成通知 (Stop → 绿色卡片)");
-  console.log("     🔐 工具授权提醒 (permission_prompt → 橙色卡片)");
-  console.log("     ⏳ 等待输入提醒 (idle_prompt → 蓝色卡片)");
+  if (selectedHooks.length > 0) {
+    console.log("  🔗 Hooks:");
+    for (const h of selectedHooks) {
+      console.log(`     ${h.icon} ${h.label}`);
+    }
+  } else {
+    console.log("  🔗 Hooks: 未配置（仅 MCP 工具可用）");
+  }
   if (userId) {
     console.log(`  👤 飞书用户: ${userName || userId}`);
   }
