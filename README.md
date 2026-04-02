@@ -1,11 +1,13 @@
 # claude-feishu-notify
 
-让 Claude Code 与飞书打通 —— 任务通知、远程指令、双向消息。
+让 Claude Code 与飞书打通 —— 任务通知、等待输入通知等。
 
 ```
 飞书用户 ←──→ 飞书机器人 ←──→ lark-cli ←──→ claude-feishu-notify ←──→ Claude Code
                                                   (MCP Server)
 ```
+<img width="1758" alt="e93093899d3f391a132672261ed6938a" src="https://github.com/user-attachments/assets/48148c87-2e7d-47db-985e-14d25a6f5dab" />
+
 
 ## 功能
 
